@@ -14,10 +14,11 @@
         </p>
     </div>
     <div class="flex flex-wrap gap-2">
-        @if(auth()->user()->role === 'it' && $currentView !== 'all')
+        @if(auth()->user()->role === 'it')
+            <a href="/tickets?view=all" class="px-4 py-2 rounded font-semibold {{ $currentView === 'all' ? 'bg-dark-sienna text-soft-dove' : 'bg-moon-rock text-soft-dove/80' }}">All Tickets</a>
             <a href="/tickets?view=submitted" class="px-4 py-2 rounded font-semibold {{ $currentView === 'submitted' ? 'bg-dark-sienna text-soft-dove' : 'bg-moon-rock text-soft-dove/80' }}">My Submitted</a>
             <a href="/tickets?view=assigned" class="px-4 py-2 rounded font-semibold {{ $currentView === 'assigned' ? 'bg-dark-sienna text-soft-dove' : 'bg-moon-rock text-soft-dove/80' }}">Assigned to Me</a>
-        @elseif(!auth()->user()->role === 'it')
+        @else
             <a href="/tickets?view=my" class="px-4 py-2 rounded bg-moon-rock text-soft-dove font-semibold">My Tickets</a>
         @endif
         <a href="/tickets/create" class="px-4 py-2 rounded bg-spiced-hot-chocolate text-soft-dove font-semibold hover:bg-moon-rock">New Ticket</a>
@@ -31,6 +32,12 @@
         <div class="flex-1">
             <label for="search" class="block text-sm font-semibold text-soft-dove mb-2">Search by Name</label>
             <input type="text" name="search" id="search" value="{{ $search ?? '' }}" placeholder="Enter submitter name..." class="w-full px-3 py-2 rounded bg-soft-dove text-black border border-soft-dove/20 focus:border-spiced-hot-chocolate focus:outline-none">
+        </div>
+
+        <!-- Filter by Ticket ID -->
+        <div class="md:w-40">
+            <label for="ticket_id" class="block text-sm font-semibold text-soft-dove mb-2">Ticket ID</label>
+            <input type="number" min="0" max="{{ $max_ticket_id ?? 1 }}" name="ticket_id" id="ticket_id" value="{{ $ticket_id ?? '' }}" placeholder="1-{{ $max_ticket_id ?? 1 }}" oninput="if (this.value !== '' && Number(this.value) <= 0) this.value = ''; if (this.max && this.value !== '' && Number(this.value) > Number(this.max)) this.value = this.max;" class="w-full px-3 py-2 rounded bg-soft-dove text-black border border-soft-dove/20 focus:border-spiced-hot-chocolate focus:outline-none">
         </div>
 
         <!-- Filter by Status -->
@@ -121,5 +128,5 @@
     <div class="mt-6 flex justify-center">
         {{ $tickets->appends(request()->query())->links() }}
     </div>
-@endif>
+@endif
 @endsection

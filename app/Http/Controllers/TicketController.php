@@ -76,10 +76,23 @@ class TicketController extends Controller
             $view = 'my';
         }
 
+        $maxTicketId = (clone $tickets)->max('id');
+
         if ($request->search) {
             $tickets->whereHas('user', function($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->search . '%');
             });
+        }
+
+        $ticketId = $request->filled('ticket_id') ? (int) $request->ticket_id : null;
+
+        if ($ticketId !== null && $ticketId <= 0) {
+            $ticketId = null;
+        }
+
+        if ($ticketId !== null && $maxTicketId !== null) {
+            $ticketId = min($ticketId, (int) $maxTicketId);
+            $tickets->where('id', $ticketId);
         }
 
         if ($request->status) {
@@ -101,6 +114,8 @@ class TicketController extends Controller
             'heading' => $heading,
             'view' => $view,
             'search' => $request->search,
+            'ticket_id' => $ticketId,
+            'max_ticket_id' => $maxTicketId,
             'status' => $request->status,
             'priority' => $request->priority,
             'currentView' => $request->view,

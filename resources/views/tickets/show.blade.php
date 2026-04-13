@@ -26,6 +26,31 @@
 
     @if($ticket->assigned_to)
         <p><b>Assigned to:</b> {{ $ticket->assignedTo?->name ?? 'Unknown' }}</p>
+
+        @if(auth()->user()->role === 'it' && $ticket->status !== 'closed' && $ticket->assigned_to === auth()->id())
+            <div class="mt-3 flex flex-wrap gap-2 items-end">
+                <form method="POST" action="{{ route('tickets.unassign', $ticket) }}" class="inline">
+                    @csrf
+                    <button type="submit" class="bg-moon-rock px-4 py-2 rounded hover:bg-spiced-hot-chocolate text-soft-dove font-bold">
+                        Unassign Ticket
+                    </button>
+                </form>
+
+                <form method="POST" action="{{ route('tickets.transfer', $ticket) }}" class="inline-flex gap-2 items-center">
+                    @csrf
+                    <select name="transfer_to" class="p-2 rounded text-black">
+                        @foreach(($itUsers ?? collect()) as $itUser)
+                            @if($itUser->id !== auth()->id())
+                                <option value="{{ $itUser->id }}">Transfer to {{ $itUser->name }}</option>
+                            @endif
+                        @endforeach
+                    </select>
+                    <button type="submit" class="bg-dark-sienna px-4 py-2 rounded hover:bg-black-raspberry text-soft-dove font-bold">
+                        Transfer
+                    </button>
+                </form>
+            </div>
+        @endif
     @elseif(auth()->user()->role === 'it')
         <form method="POST" action="/tickets/{{ $ticket->id }}/claim" class="mt-2">
             @csrf
@@ -46,9 +71,11 @@
                 $extension = pathinfo($attachment->file_path, PATHINFO_EXTENSION);
                 $ext = strtolower($extension);
                 $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']);
-                $isPreviewable = $isImage || in_array($ext, ['pdf', 'txt']);
+                $isDocx = $ext === 'docx';
+                $isPreviewable = $isImage || in_array($ext, ['pdf', 'txt']) || $isDocx;
                 $isOffice = in_array($ext, ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
                 $previewUrl = route('tickets.attachments.show', ['ticket' => $ticket, 'attachment' => $attachment, 'preview' => 1]);
+                $docxHtmlPreviewUrl = route('tickets.attachments.show', ['ticket' => $ticket, 'attachment' => $attachment, 'preview_html' => 1, 'force_html' => 1, 'v' => now()->timestamp]);
                 $downloadUrl = route('tickets.attachments.show', ['ticket' => $ticket, 'attachment' => $attachment, 'download' => 1]);
                 $officeViewerUrl = 'https://view.officeapps.live.com/op/view.aspx?src=' . urlencode($previewUrl);
             @endphp
@@ -61,12 +88,12 @@
 
                 <div class="flex flex-wrap gap-2">
                     @if($isPreviewable)
-                        <button type="button" class="px-3 py-1 rounded bg-green-700 hover:bg-green-800 text-soft-dove text-sm" data-preview-url="{{ $previewUrl }}" data-preview-type="{{ $isImage ? 'image' : ($ext === 'pdf' ? 'pdf' : 'text') }}">
+                        <button type="button" class="px-3 py-1 rounded bg-green-700 hover:bg-green-800 text-soft-dove text-sm" data-preview-url="{{ $isDocx ? $docxHtmlPreviewUrl : $previewUrl }}" data-preview-type="{{ $isImage ? 'image' : 'frame' }}">
                             Preview
                         </button>
                     @endif
 
-                    @if($isOffice)
+                    @if($isOffice && !$isDocx)
                         <a href="{{ $officeViewerUrl }}" target="_blank" class="px-3 py-1 rounded bg-moon-rock hover:bg-spiced-hot-chocolate text-soft-dove text-sm">
                             Open in Office Viewer
                         </a>
@@ -104,7 +131,7 @@
             };
 
             previewButtons.forEach((btn) => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', async () => {
                     const url = btn.getAttribute('data-preview-url');
                     const type = btn.getAttribute('data-preview-type');
 
@@ -143,6 +170,13 @@
             <form method="POST" action="/tickets/{{ $ticket->id }}/complete" class="inline">
                 @csrf
                 <button class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 text-white font-bold">Complete Ticket</button>
+            </form>
+        @endif
+
+        @if(auth()->user()->role === 'it' && $ticket->status === 'closed')
+            <form method="POST" action="{{ route('tickets.reopen', $ticket) }}" class="inline">
+                @csrf
+                <button class="bg-yellow-600 px-4 py-2 rounded hover:bg-yellow-700 text-white font-bold">Reopen Ticket</button>
             </form>
         @endif
 

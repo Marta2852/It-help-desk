@@ -18,6 +18,7 @@
             <a href="/tickets?view=all" class="px-4 py-2 rounded font-semibold {{ $currentView === 'all' ? 'bg-dark-sienna text-soft-dove' : 'bg-moon-rock text-soft-dove/80' }}">All Tickets</a>
             <a href="/tickets?view=submitted" class="px-4 py-2 rounded font-semibold {{ $currentView === 'submitted' ? 'bg-dark-sienna text-soft-dove' : 'bg-moon-rock text-soft-dove/80' }}">My Submitted</a>
             <a href="/tickets?view=assigned" class="px-4 py-2 rounded font-semibold {{ $currentView === 'assigned' ? 'bg-dark-sienna text-soft-dove' : 'bg-moon-rock text-soft-dove/80' }}">Assigned to Me</a>
+            <a href="{{ route('tickets.monthly') }}" class="px-4 py-2 rounded font-semibold bg-spiced-hot-chocolate text-soft-dove hover:bg-black-raspberry">Monthly View</a>
         @else
             <a href="/tickets?view=my" class="px-4 py-2 rounded bg-moon-rock text-soft-dove font-semibold">My Tickets</a>
         @endif
@@ -45,9 +46,9 @@
             <label for="status" class="block text-sm font-semibold text-soft-dove mb-2">Filter by Status</label>
             <select name="status" id="status" class="w-full px-3 py-2 rounded bg-soft-dove text-black border border-soft-dove/20 focus:border-spiced-hot-chocolate focus:outline-none">
                 <option value="">All Statuses</option>
-                <option value="open" {{ ($status ?? '') === 'open' ? 'selected' : '' }}>Open</option>
-                <option value="in_progress" {{ ($status ?? '') === 'in_progress' ? 'selected' : '' }}>In Progress</option>
-                <option value="closed" {{ ($status ?? '') === 'closed' ? 'selected' : '' }}>Closed</option>
+                @foreach(($status_options ?? \App\Enums\TicketStatus::labels()) as $value => $label)
+                    <option value="{{ $value }}" {{ ($status ?? '') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
             </select>
         </div>
 
@@ -56,9 +57,9 @@
             <label for="priority" class="block text-sm font-semibold text-soft-dove mb-2">Filter by Priority</label>
             <select name="priority" id="priority" class="w-full px-3 py-2 rounded bg-soft-dove text-black border border-soft-dove/20 focus:border-spiced-hot-chocolate focus:outline-none">
                 <option value="">All Priorities</option>
-                <option value="Low" {{ ($priority ?? '') === 'Low' ? 'selected' : '' }}>Low</option>
-                <option value="Medium" {{ ($priority ?? '') === 'Medium' ? 'selected' : '' }}>Medium</option>
-                <option value="High" {{ ($priority ?? '') === 'High' ? 'selected' : '' }}>High</option>
+                @foreach(($priority_options ?? \App\Enums\TicketPriority::labels()) as $value => $label)
+                    <option value="{{ $value }}" {{ ($priority ?? '') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
             </select>
         </div>
 

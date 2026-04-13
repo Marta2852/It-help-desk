@@ -16,8 +16,8 @@
             }
 
             .completion-modal-card {
-                background-color: #39ff14; /* SQUARE COLOUR */
-                border-color: #15803d; /* OUTLINE SQUARE */
+                background-color: #faa396; /* SQUARE COLOUR */
+                border-color: #a15145; /* OUTLINE SQUARE */
             }
         </style>
 

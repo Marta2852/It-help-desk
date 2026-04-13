@@ -152,18 +152,156 @@
         })();
     </script>
 
-    <h3 class="mt-4 font-semibold">Comments</h3>
-    <div class="space-y-2">
-        @foreach($ticket->comments as $c)
-            <p><b>{{ $c->user->name }}:</b> {{ $c->comment }}</p>
-        @endforeach
+    <h3 class="mt-6 font-semibold text-lg">Live Chat</h3>
+    <p class="text-sm text-soft-dove/75 mb-2">User and IT staff can chat here in real time for this ticket.</p>
+
+    <div
+        id="chat-panel"
+        class="rounded-xl border border-soft-dove/20 bg-black/20 p-3"
+        data-feed-url="{{ route('tickets.comments.feed', $ticket) }}"
+        data-post-url="{{ route('tickets.addComment', $ticket) }}"
+        data-csrf-token="{{ csrf_token() }}"
+        data-current-user-id="{{ (int) auth()->id() }}"
+    >
+        <div id="chat-messages" class="h-72 overflow-y-auto space-y-2 pr-1"></div>
+
+        <form id="chat-form" method="POST" action="{{ route('tickets.addComment', $ticket) }}" class="mt-3">
+            @csrf
+            <textarea id="chat-input" name="comment" placeholder="Type your message..." class="w-full p-2 rounded text-black mb-2" maxlength="2000"></textarea>
+            <div class="flex items-center justify-between gap-2">
+                <p id="chat-status" class="text-xs text-soft-dove/70"></p>
+                <button id="chat-send" class="bg-dark-sienna px-4 py-2 rounded hover:bg-black-raspberry text-soft-dove font-bold">Send</button>
+            </div>
+        </form>
     </div>
 
-    <form method="POST" action="/tickets/{{ $ticket->id }}/comment" class="mt-4">
-        @csrf
-        <textarea name="comment" placeholder="Write a comment" class="w-full p-2 rounded text-black mb-2"></textarea>
-        <button class="bg-dark-sienna px-4 py-2 rounded hover:bg-black-raspberry text-soft-dove font-bold">Send</button>
-    </form>
+    <script>
+        (function () {
+            const chatPanel = document.getElementById('chat-panel');
+            if (!chatPanel) {
+                return;
+            }
+
+            const feedUrl = chatPanel.dataset.feedUrl;
+            const postUrl = chatPanel.dataset.postUrl;
+            const csrf = chatPanel.dataset.csrfToken;
+            const currentUserId = Number(chatPanel.dataset.currentUserId || 0);
+            const messagesBox = document.getElementById('chat-messages');
+            const form = document.getElementById('chat-form');
+            const input = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('chat-send');
+            const status = document.getElementById('chat-status');
+
+            if (!messagesBox || !form || !input) {
+                return;
+            }
+
+            let lastRenderedSignature = '';
+
+            const escapeHtml = (text) => {
+                const div = document.createElement('div');
+                div.textContent = text ?? '';
+                return div.innerHTML;
+            };
+
+            const renderMessages = (comments) => {
+                const signature = JSON.stringify(comments.map((c) => [c.id, c.comment, c.created_at]));
+                if (signature === lastRenderedSignature) {
+                    return;
+                }
+
+                const nearBottom = messagesBox.scrollHeight - messagesBox.scrollTop - messagesBox.clientHeight < 40;
+
+                messagesBox.innerHTML = comments.map((c) => {
+                    const mine = Number(c.user_id) === currentUserId;
+                    const wrapperClass = mine ? 'flex justify-end' : 'flex justify-start';
+                    const bubbleClass = mine
+                        ? 'max-w-[80%] rounded-lg px-3 py-2 bg-dark-sienna text-soft-dove'
+                        : 'max-w-[80%] rounded-lg px-3 py-2 bg-moon-rock text-soft-dove';
+
+                    return '<div class="' + wrapperClass + '">' +
+                        '<div class="' + bubbleClass + '">' +
+                            '<p class="text-xs font-semibold mb-1">' + escapeHtml(c.user_name) + '</p>' +
+                            '<p class="text-sm break-words">' + escapeHtml(c.comment) + '</p>' +
+                            '<p class="text-[11px] opacity-70 mt-1">' + escapeHtml(c.created_at_human || '') + '</p>' +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+
+                if (nearBottom || comments.length <= 1) {
+                    messagesBox.scrollTop = messagesBox.scrollHeight;
+                }
+
+                lastRenderedSignature = signature;
+            };
+
+            const loadMessages = async () => {
+                try {
+                    const response = await fetch(feedUrl, {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load chat messages');
+                    }
+
+                    const data = await response.json();
+                    renderMessages(data.comments || []);
+                    status.textContent = 'Live chat connected';
+                } catch (error) {
+                    status.textContent = 'Chat disconnected. Retrying...';
+                }
+            };
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const message = input.value.trim();
+                if (!message) {
+                    return;
+                }
+
+                sendBtn.disabled = true;
+                status.textContent = 'Sending...';
+
+                try {
+                    const response = await fetch(postUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrf,
+                        },
+                        body: JSON.stringify({ comment: message }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Send failed');
+                    }
+
+                    input.value = '';
+                    await loadMessages();
+                    status.textContent = 'Sent';
+                } catch (error) {
+                    status.textContent = 'Message failed. Please retry.';
+                } finally {
+                    sendBtn.disabled = false;
+                }
+            });
+
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    form.requestSubmit();
+                }
+            });
+
+            loadMessages();
+            setInterval(loadMessages, 4000);
+        })();
+    </script>
 
     <div class="mt-4 space-x-2">
         @if(auth()->user()->role === 'it' && $ticket->assigned_to === auth()->id() && $ticket->status !== 'closed')

@@ -244,6 +244,43 @@ class TicketWorkflowTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_live_chat_feed_and_send_work_for_ticket_owner_and_it(): void
+    {
+        $owner = User::factory()->create(['role' => 'user']);
+        $itUser = User::factory()->create(['role' => 'it']);
+        $ticket = $this->makeTicket($owner);
+
+        $ownerComment = Comment::query()->create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $owner->id,
+            'comment' => 'Initial issue details',
+        ]);
+
+        $this->actingAs($itUser)
+            ->getJson('/tickets/'.$ticket->id.'/comments')
+            ->assertOk()
+            ->assertJsonPath('comments.0.id', $ownerComment->id)
+            ->assertJsonPath('comments.0.comment', 'Initial issue details');
+
+        $this->actingAs($itUser)
+            ->postJson('/tickets/'.$ticket->id.'/comment', [
+                'comment' => 'Checking this now',
+            ])
+            ->assertOk()
+            ->assertJsonPath('comment.comment', 'Checking this now');
+
+        $this->assertDatabaseHas('comments', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $itUser->id,
+            'comment' => 'Checking this now',
+        ]);
+
+        $this->actingAs($owner)
+            ->getJson('/tickets/'.$ticket->id.'/comments')
+            ->assertOk()
+            ->assertJsonFragment(['comment' => 'Checking this now']);
+    }
+
     private function makeTicket(User $owner, array $overrides = []): Ticket
     {
         return Ticket::query()->create(array_merge([

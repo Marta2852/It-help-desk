@@ -227,6 +227,11 @@ class TicketController extends Controller
     {
         $this->authorize('view', $ticket);
 
+        $ticket->load([
+            'attachments',
+            'comments' => fn ($query) => $query->with('user:id,name')->oldest(),
+        ]);
+
         $itUsers = User::query()
             ->where('role', 'it')
             ->orderBy('name')
@@ -396,14 +401,16 @@ class TicketController extends Controller
         $this->authorize('comment', $ticket);
 
         $request->validate([
-            'comment' => 'required'
+            'comment' => 'required|string|max:2000'
         ]);
 
-        Comment::create([
+        $comment = Comment::create([
             'ticket_id' => $ticket->id,
             'user_id' => auth()->id(),
             'comment' => $request->comment
         ]);
+
+        $comment->load('user:id,name');
 
         $commentRecipients = User::query()
             ->whereIn('id', array_values(array_filter([
@@ -420,7 +427,45 @@ class TicketController extends Controller
             auth()->user()->name.' added a comment on this ticket.'
         );
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Comment sent.',
+                'comment' => [
+                    'id' => $comment->id,
+                    'user_id' => $comment->user_id,
+                    'user_name' => $comment->user?->name ?? 'Unknown',
+                    'comment' => $comment->comment,
+                    'created_at' => $comment->created_at?->toIso8601String(),
+                    'created_at_human' => $comment->created_at?->diffForHumans(),
+                ],
+            ]);
+        }
+
         return redirect('/tickets/'.$ticket->id);
+    }
+
+    public function commentsFeed(Ticket $ticket)
+    {
+        $this->authorize('view', $ticket);
+
+        $comments = $ticket->comments()
+            ->with('user:id,name')
+            ->oldest()
+            ->get()
+            ->map(function (Comment $comment) {
+                return [
+                    'id' => $comment->id,
+                    'user_id' => $comment->user_id,
+                    'user_name' => $comment->user?->name ?? 'Unknown',
+                    'comment' => $comment->comment,
+                    'created_at' => $comment->created_at?->toIso8601String(),
+                    'created_at_human' => $comment->created_at?->diffForHumans(),
+                ];
+            });
+
+        return response()->json([
+            'comments' => $comments,
+        ]);
     }
 
     public function destroy(Ticket $ticket)

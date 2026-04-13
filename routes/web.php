@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/tickets/{ticket}', [TicketController::class,'update'])->name('tickets.update');
     Route::delete('/tickets/{ticket}', [TicketController::class,'destroy'])->name('tickets.destroy');
     Route::post('/tickets/{ticket}/comment', [TicketController::class,'addComment'])->name('tickets.addComment');
+    Route::get('/tickets/{ticket}/comments', [TicketController::class,'commentsFeed'])->name('tickets.comments.feed');
     Route::post('/tickets/{ticket}/claim', [TicketController::class,'claim'])->name('tickets.claim');
     Route::post('/tickets/{ticket}/complete', [TicketController::class,'complete'])->name('tickets.complete');
     Route::post('/tickets/{ticket}/reopen', [TicketController::class, 'reopen'])->name('tickets.reopen');
